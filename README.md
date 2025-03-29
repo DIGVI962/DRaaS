@@ -59,7 +59,7 @@ DRaaS/
    Ensure Docker is installed and running on your system, as both the agent and scheduler use Docker commands.
 
 
-*Configuration*
+## Configuration
 
 - **Agent Configuration:**
 
@@ -73,7 +73,7 @@ DRaaS/
   - `DOCKER_USERNAME`
   - `DOCKER_PASSWORD`
 
-*Running the Services*
+## Running the Services
 
 1. **Start the Scheduler:**
    ```bash
@@ -96,13 +96,13 @@ DRaaS/
    ```
    Use the client GUI to select a ZIP file containing your project (including a Dockerfile) and upload it to the scheduler for deployment.
 
-*Dashboard UI*
+## Dashboard UI
 
 The scheduler's dashboard (available at `http://localhost:5000/dashboard`) provides:
 - Active Agents: A table displaying the agent ID, IP, CPU usage, memory usage, and last seen timestamp.
 - Deployment Monitor: A form to input a Deployment ID and Agent IP to fetch the container logs from the agent. It also provides a button to cancel the deployment.
 
-*API Endpoints*
+## API Endpoints
 
 **Scheduler Endpoints**
 - **POST** `/heartbeat`
@@ -127,7 +127,7 @@ The scheduler's dashboard (available at `http://localhost:5000/dashboard`) provi
 - **GET** `/dashboard`
   Serves the HTML dashboard UI.
 
-*Agent Endpoints*
+## Agent Endpoints
 
 - **POST** ` /start_deployment`
   Starts a Docker container based on the provided image and container name. Returns a deployment ID and mapped ports.
@@ -139,7 +139,7 @@ The scheduler's dashboard (available at `http://localhost:5000/dashboard`) provi
 - **POST** `/cancel_deployment`
   Cancels an ongoing deployment given a deployment ID.
 
-*Troubleshooting*
+## Troubleshooting
 
 - **CORS Issues:**
   If you experience issues fetching logs from the agent when using the dashboard, ensure that CORS is enabled on the agent. This project uses Flask-CORS in `agent.py`.
