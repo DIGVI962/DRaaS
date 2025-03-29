@@ -6,7 +6,7 @@ import docker
 import requests
 import psutil
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # Import CORS
+from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
@@ -16,12 +16,15 @@ AGENT_IP = os.getenv("AGENT_IP", "localhost")
 AGENT_ID = str(uuid.uuid4())
 SCHEDULER_URL = os.getenv("SCHEDULER_URL", "http://localhost:5000")
 
+# Global state for the agent: "Free" or "Busy"
+agent_state = "Free"
+
 # Dictionary to track ongoing deployments.
 # Keys: deployment_id, Values: { "container": <container_object>, "logs": <str>, "status": <running|completed|failed|cancelled>, "mapped_ports": <dict> }
 deployment_tasks = {}
 
 def send_heartbeat():
-    """Send heartbeat info (CPU, memory) to the scheduler."""
+    """Send heartbeat info (CPU, memory, and agent state) to the scheduler."""
     while True:
         try:
             cpu_usage = psutil.cpu_percent(interval=1)
@@ -31,6 +34,7 @@ def send_heartbeat():
                 "ip": AGENT_IP,
                 "cpu": cpu_usage,
                 "memory": memory_usage,
+                "state": agent_state
             }
             requests.post(f"{SCHEDULER_URL}/heartbeat", json=payload, timeout=5)
         except Exception as e:
@@ -39,19 +43,19 @@ def send_heartbeat():
 
 @app.route('/start_deployment', methods=['POST'])
 def start_deployment():
-    """
-    Starts a deployment by running a container with dynamic port mapping.
-    Expects JSON payload with:
-      - "image": Docker image name,
-      - "container_name": Optional name for the container.
-    Returns a deployment_id, initial port mapping, and status.
-    """
+    global agent_state
+    # Only run deployments on a free agent.
+    if agent_state == "Busy":
+        return jsonify({"status": "error", "message": "Agent is busy"}), 400
+
     data = request.get_json()
     image = data.get("image")
     container_name = data.get("container_name", f"container_{uuid.uuid4()}")
     if not image:
         return jsonify({"status": "error", "message": "Image not specified"}), 400
     try:
+        # Mark the agent as busy.
+        agent_state = "Busy"
         # Run the container with dynamic port mapping.
         container = docker_client.containers.run(
             image,
@@ -59,10 +63,9 @@ def start_deployment():
             detach=True,
             stdout=True,
             stderr=True,
-            publish_all_ports=True  # Dynamically map all exposed ports.
+            publish_all_ports=True
         )
         deployment_id = str(uuid.uuid4())
-        # Save initial deployment info.
         deployment_tasks[deployment_id] = {
             "container": container,
             "logs": "",
@@ -77,10 +80,11 @@ def start_deployment():
         threading.Thread(target=monitor_deployment, args=(deployment_id,), daemon=True).start()
         return jsonify({"status": "started", "deployment_id": deployment_id, "mapped_ports": ports}), 200
     except Exception as e:
+        agent_state = "Free"  # Reset state on error.
         return jsonify({"status": "error", "message": str(e)}), 500
 
 def monitor_deployment(deployment_id):
-    """Monitors the container logs and waits for its completion. Performs cleanup after finish."""
+    global agent_state
     container = deployment_tasks[deployment_id]["container"]
     try:
         for log in container.logs(stream=True):
@@ -88,16 +92,17 @@ def monitor_deployment(deployment_id):
             deployment_tasks[deployment_id]["logs"] += decoded_log
     except Exception as e:
         deployment_tasks[deployment_id]["logs"] += f"\nError during log streaming: {str(e)}"
-    # Wait for the container to complete.
+    # Wait for the container to finish.
     result = container.wait()
-    # Mark deployment status based on exit code.
     deployment_tasks[deployment_id]["status"] = "completed" if result["StatusCode"] == 0 else "failed"
-    # Cleanup: remove the container and then the image.
+    # Cleanup: remove the container and the image.
     try:
         container.remove()
         docker_client.images.remove(image=container.image.tags[0], force=True)
     except Exception as e:
         deployment_tasks[deployment_id]["logs"] += f"\nCleanup error: {str(e)}"
+    # Mark the agent as free after deployment completes.
+    agent_state = "Free"
 
 @app.route('/deployment_logs', methods=['GET'])
 def deployment_logs():
@@ -116,6 +121,7 @@ def deployment_logs():
 
 @app.route('/cancel_deployment', methods=['POST'])
 def cancel_deployment():
+    global agent_state
     """
     Cancels an ongoing deployment.
     Expects JSON payload with "deployment_id".
@@ -128,6 +134,7 @@ def cancel_deployment():
     try:
         container.stop()
         deployment_tasks[deployment_id]["status"] = "cancelled"
+        agent_state = "Free"
         return jsonify({"status": "cancelled", "deployment_id": deployment_id}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

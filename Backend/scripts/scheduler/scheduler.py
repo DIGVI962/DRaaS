@@ -11,6 +11,7 @@ import docker
 app = Flask(__name__)
 
 # In-memory registry of active agents.
+# Each agent record now includes a "state" field (Free or Busy)
 agents = {}
 HEARTBEAT_TIMEOUT = 10  # seconds
 
@@ -18,7 +19,10 @@ docker_client = docker.from_env()
 
 @app.route('/heartbeat', methods=['POST'])
 def heartbeat():
-    """Receive heartbeat messages from agents."""
+    """
+    Receives heartbeat messages from agents.
+    Expected JSON payload includes: agent_id, ip, cpu, memory, and state.
+    """
     data = request.get_json()
     agent_id = data.get("agent_id")
     if not agent_id:
@@ -27,6 +31,7 @@ def heartbeat():
         "ip": data.get("ip"),
         "cpu": data.get("cpu"),
         "memory": data.get("memory"),
+        "state": data.get("state", "Free"),
         "last_seen": time.time()
     }
     return jsonify({"status": "ok"}), 200
@@ -34,9 +39,9 @@ def heartbeat():
 @app.route('/upload_code', methods=['POST'])
 def upload_code():
     """
-    Accepts a ZIP file containing the source code and a Dockerfile.
-    Builds a Docker image, pushes it to Docker Hub (if credentials are provided),
-    and instructs an available agent to start the deployment.
+    Accepts a ZIP file containing source code and a Dockerfile.
+    Builds a Docker image, optionally pushes it to Docker Hub,
+    and instructs an available free agent to start a deployment.
     """
     if 'code' not in request.files:
         return jsonify({"status": "error", "message": "No code file provided"}), 400
@@ -49,7 +54,6 @@ def upload_code():
     file_path = os.path.join(upload_dir, code_file.filename)
     code_file.save(file_path)
 
-    # Extract ZIP file if applicable.
     if code_file.filename.lower().endswith(".zip"):
         try:
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
@@ -58,7 +62,6 @@ def upload_code():
         except Exception as e:
             return jsonify({"status": "error", "message": f"Failed to unzip: {str(e)}"}), 500
 
-    # Determine the build context (look for a Dockerfile).
     build_context = upload_dir
     if not os.path.exists(os.path.join(upload_dir, 'Dockerfile')):
         subdirs = [d for d in os.listdir(upload_dir) if os.path.isdir(os.path.join(upload_dir, d))]
@@ -74,7 +77,6 @@ def upload_code():
     except Exception as e:
         return jsonify({"status": "error", "message": f"Docker build failed: {str(e)}"}), 500
 
-    # Optionally push the image to Docker Hub if credentials are provided.
     try:
         username = os.getenv("DOCKER_USERNAME")
         password = os.getenv("DOCKER_PASSWORD")
@@ -87,21 +89,20 @@ def upload_code():
     except Exception as e:
         return jsonify({"status": "error", "message": f"Docker push failed: {str(e)}"}), 500
 
-    # Find an available agent based on heartbeat.
-    available_agents = {aid: info for aid, info in agents.items() if time.time() - info["last_seen"] < HEARTBEAT_TIMEOUT}
+    # Only select agents that are free.
+    available_agents = {aid: info for aid, info in agents.items() 
+                        if time.time() - info["last_seen"] < HEARTBEAT_TIMEOUT and info.get("state") == "Free"}
     if not available_agents:
-        return jsonify({"status": "error", "message": "No available agents"}), 503
+        return jsonify({"status": "error", "message": "No available free agents"}), 503
 
     selected_agent = min(available_agents.items(), key=lambda x: x[1]["cpu"])[1]
     agent_ip = selected_agent["ip"]
 
     try:
-        # Use the new /start_deployment endpoint on the agent.
         url = f"http://{agent_ip}:5001/start_deployment"
         payload = {"image": image_tag, "container_name": f"{image_tag}_container"}
         resp = requests.post(url, json=payload, timeout=60)
         if resp.status_code == 200:
-            # Deployment started; return deployment info.
             return jsonify({
                 "status": "deployed",
                 "agent": agent_ip,
@@ -120,8 +121,8 @@ def scheduler_cancel_deployment():
     """
     Forwards a cancellation request to an agent.
     Expects JSON payload with:
-      - "deployment_id": the ID of the deployment to cancel,
-      - "agent_ip": the IP of the agent hosting the deployment.
+      - "deployment_id": the deployment ID,
+      - "agent_ip": the IP address of the agent.
     """
     data = request.get_json()
     deployment_id = data.get("deployment_id")
@@ -140,15 +141,14 @@ def scheduler_cancel_deployment():
 
 @app.route('/agents', methods=['GET'])
 def get_agents():
-    """
-    Returns the list of active agents in JSON format.
-    """
+    """Returns the list of active agents in JSON format."""
     return jsonify(agents)
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     """
-    Returns a basic HTML dashboard to monitor agents and deployments.
+    Serves a basic HTML dashboard to monitor active agents and deployments.
+    Displays agent status with a colored dot and tooltip.
     """
     html = """
     <!DOCTYPE html>
@@ -161,6 +161,14 @@ def dashboard():
             th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
             th { background-color: #f4f4f4; }
             .section { margin-bottom: 40px; }
+            .dot {
+                height: 15px;
+                width: 15px;
+                border-radius: 50%;
+                display: inline-block;
+            }
+            .free { background-color: green; }
+            .busy { background-color: red; }
         </style>
     </head>
     <body>
@@ -175,6 +183,7 @@ def dashboard():
                         <th>CPU</th>
                         <th>Memory</th>
                         <th>Last Seen</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -194,7 +203,7 @@ def dashboard():
             <pre id="logs" style="background-color: #eee; padding: 10px; height:300px; overflow:auto;"></pre>
         </div>
         <script>
-            // Poll for agents every 5 seconds.
+            // Fetch active agents every 5 seconds.
             function fetchAgents() {
                 fetch('/agents')
                 .then(response => response.json())
@@ -203,6 +212,8 @@ def dashboard():
                     tbody.innerHTML = "";
                     for (let agentId in data) {
                         const agent = data[agentId];
+                        let statusClass = agent.state.toLowerCase() === "free" ? "free" : "busy";
+                        let tooltip = agent.state;
                         const row = document.createElement("tr");
                         row.innerHTML = `
                             <td>${agentId}</td>
@@ -210,17 +221,18 @@ def dashboard():
                             <td>${agent.cpu}</td>
                             <td>${agent.memory}</td>
                             <td>${new Date(agent.last_seen * 1000).toLocaleString()}</td>
+                            <td><span class="dot ${statusClass}" title="${tooltip}"></span> ${agent.state}</td>
                         `;
                         tbody.appendChild(row);
                     }
                 })
                 .catch(err => console.error("Error fetching agents:", err));
             }
-            // Initial fetch and poll.
+            // Initial fetch and poll every 5 seconds.
             fetchAgents();
             setInterval(fetchAgents, 5000);
 
-            // Fetch deployment logs directly from the agent.
+            // Fetch deployment logs from the agent.
             function fetchLogs() {
                 const deploymentId = document.getElementById("deploymentId").value;
                 const agentIp = document.getElementById("agentIp").value;
@@ -228,11 +240,10 @@ def dashboard():
                     alert("Please provide both Deployment ID and Agent IP.");
                     return;
                 }
-                // Assumes agent's /deployment_logs endpoint is accessible.
                 fetch(`http://${agentIp}:5001/deployment_logs?deployment_id=${deploymentId}`)
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById("logs").textContent = 
+                    document.getElementById("logs").textContent =
                         "Status: " + data.status + "\\n\\n" +
                         "Mapped Ports: " + JSON.stringify(data.mapped_ports, null, 2) + "\\n\\n" +
                         "Logs:\\n" + data.logs;
@@ -243,7 +254,7 @@ def dashboard():
                 });
             }
 
-            // Cancel a deployment by calling the scheduler endpoint.
+            // Cancel a deployment.
             function cancelDeployment() {
                 const deploymentId = document.getElementById("deploymentId").value;
                 const agentIp = document.getElementById("agentIp").value;

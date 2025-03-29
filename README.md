@@ -1,4 +1,4 @@
-# Distributed Physical Resources as a Service (DRaaS)
+# DRaaS
 
 A distributed system for deploying, monitoring, and managing Docker-based workloads across multiple machines. This project consists of three main components:
 
@@ -10,9 +10,9 @@ A distributed system for deploying, monitoring, and managing Docker-based worklo
 ```
 DRaaS/
 ├── agent/
-    └── agent.py # Agent service handling container execution and log monitoring. 
+|   └── agent.py # Agent service handling container execution and log monitoring. 
 ├── scheduler/
-    └── scheduler.py # Scheduler service for image building, agent selection, and dashboard UI. 
+|   └── scheduler.py # Scheduler service for image building, agent selection, and dashboard UI. 
 └── demoClient/
     └── demoClient.py # Demo GUI client for uploading code and initiating deployments.
 ```
