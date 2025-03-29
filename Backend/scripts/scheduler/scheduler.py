@@ -1,11 +1,13 @@
+"""Contains the main scheduler for managing deployments and agents."""
+
 import os
-from dotenv import load_dotenv
 import time
 import uuid
 import threading
 import tempfile
 import zipfile
-from flask import Flask, request, jsonify, Response, render_template
+from dotenv import load_dotenv
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import requests
 import docker
@@ -77,7 +79,10 @@ def upload_code():
         if len(subdirs) == 1 and os.path.exists(os.path.join(upload_dir, subdirs[0], 'Dockerfile')):
             build_context = os.path.join(upload_dir, subdirs[0])
         else:
-            return jsonify({"status": "error", "message": "Cannot locate specified Dockerfile"}), 400
+            return jsonify({
+                "status": "error",
+                "message": "Cannot locate specified Dockerfile"
+            }), 400
 
     print(f"Building Docker image from build context: {build_context}")
     image_tag = "user_code_image_" + str(uuid.uuid4())[:8]
@@ -100,8 +105,10 @@ def upload_code():
         return jsonify({"status": "error", "message": f"Docker push failed: {str(e)}"}), 500
 
     # Only select agents that are free.
-    available_agents = {aid: info for aid, info in agents.items() 
-                        if time.time() - info["last_seen"] < HEARTBEAT_TIMEOUT and info.get("state") == "Free"}
+    available_agents = {
+        aid: info for aid, info in agents.items()
+            if time.time() - info["last_seen"] < HEARTBEAT_TIMEOUT and info.get("state") == "Free"
+    }
     if not available_agents:
         return jsonify({"status": "error", "message": "No available free agents"}), 503
 
@@ -156,6 +163,7 @@ def get_deployment_logs():
 
 @app.route('/cancel_deployment', methods=['POST'])
 def scheduler_cancel_deployment():
+    """Cancels a deployment by sending a request to the agent."""
     data = request.get_json()
     deployment_id = data.get("deployment_id")
     if not deployment_id:
@@ -180,6 +188,7 @@ def get_agents():
 
 @app.route('/deployments', methods=['GET'])
 def get_deployments():
+    """Gets the list of all deployments."""
     return jsonify(deployments)
 
 @app.route('/dashboard', methods=['GET'])
