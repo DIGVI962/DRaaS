@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Scheduler Dashboard</title>
+  <style>
+    /* Modern, sleek styling */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f7f9fc;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h1, h2 {
+      color: #2a3f54;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background: #2a3f54;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    tr:hover {
+      background: #f1f1f1;
+    }
+    .dot {
+      height: 15px;
+      width: 15px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    .free {
+      background-color: #28a745;
+    }
+    .busy {
+      background-color: #dc3545;
+    }
+    .section {
+      margin-bottom: 40px;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-radius: 5px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    input[type="text"],
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 14px;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #2a3f54;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #1a2738;
+    }
+    #uploadStatus {
+      margin-top: 10px;
+      font-style: italic;
+      color: #555;
+    }
+    pre {
+      background: #272c34;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 5px;
+      overflow: auto;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Scheduler Dashboard</h1>
+    <div class="section">
+      <h2>Active Agents</h2>
+      <table id="agentsTable">
+        <thead>
+          <tr>
+            <th>Agent ID</th>
+            <th>IP</th>
+            <th>CPU</th>
+            <th>Memory</th>
+            <th>Last Seen</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h2>Upload Code & Deploy</h2>
+      <form id="uploadForm">
+        <div class="form-group">
+          <input type="file" id="zipFile" accept=".zip" required>
+        </div>
+        <button type="button" onclick="uploadCode()">Upload & Deploy</button>
+      </form>
+      <div id="uploadStatus"></div>
+    </div>
+    <div class="section">
+      <h2>Deployment Monitor</h2>
+      <form id="deploymentForm">
+        <div class="form-group">
+          <label for="deploymentId">Deployment ID:</label>
+          <input type="text" id="deploymentId" required>
+        </div>
+        <div class="form-group">
+          <label for="agentIp">Agent IP:</label>
+          <input type="text" id="agentIp" required>
+        </div>
+        <button type="button" onclick="fetchLogs()">Fetch Logs</button>
+        <button type="button" onclick="cancelDeployment()">Cancel Deployment</button>
+      </form>
+      <pre id="logs"></pre>
+    </div>
+  </div>
+  <script>
+    // Poll active agents every 5 seconds.
+    function fetchAgents() {
+      fetch('/agents')
+        .then(response => response.json())
+        .then(data => {
+          const tbody = document.querySelector("#agentsTable tbody");
+          tbody.innerHTML = "";
+          for (let agentId in data) {
+            const agent = data[agentId];
+            let statusClass = agent.state.toLowerCase() === "free" ? "free" : "busy";
+            let tooltip = agent.state;
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${agentId}</td>
+              <td>${agent.ip}</td>
+              <td>${agent.cpu}</td>
+              <td>${agent.memory}</td>
+              <td>${new Date(agent.last_seen * 1000).toLocaleString()}</td>
+              <td><span class="dot ${statusClass}" title="${tooltip}"></span> ${agent.state}</td>
+            `;
+            tbody.appendChild(row);
+          }
+        })
+        .catch(err => console.error("Error fetching agents:", err));
+    }
+    fetchAgents();
+    setInterval(fetchAgents, 5000);
+
+    // Upload ZIP file and deploy code.
+    function uploadCode() {
+      const fileInput = document.getElementById("zipFile");
+      if (fileInput.files.length === 0) {
+        alert("Please select a ZIP file to upload.");
+        return;
+      }
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append("code", file);
+      document.getElementById("uploadStatus").innerText = "Uploading and deploying...";
+      fetch("/upload_code", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "deployed") {
+          document.getElementById("uploadStatus").innerText = "Deployment successful! Deployment ID: " + data.deployment_id;
+          document.getElementById("deploymentId").value = data.deployment_id;
+          document.getElementById("agentIp").value = data.agent;
+        } else {
+          document.getElementById("uploadStatus").innerText = "Error: " + data.message;
+        }
+      })
+      .catch(err => {
+        console.error("Error uploading code:", err);
+        document.getElementById("uploadStatus").innerText = "Error uploading code: " + err;
+      });
+    }
+
+    // Fetch deployment logs from agent.
+    function fetchLogs() {
+      const deploymentId = document.getElementById("deploymentId").value;
+      const agentIp = document.getElementById("agentIp").value;
+      if (!deploymentId || !agentIp) {
+        alert("Please provide both Deployment ID and Agent IP.");
+        return;
+      }
+      fetch(`http://${agentIp}:5001/deployment_logs?deployment_id=${deploymentId}`)
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("logs").textContent =
+          "Status: " + data.status + "\n\n" +
+          "Mapped Ports: " + JSON.stringify(data.mapped_ports, null, 2) + "\n\n" +
+          "Logs:\n" + data.logs;
+      })
+      .catch(err => {
+        console.error("Error fetching logs:", err);
+        document.getElementById("logs").textContent = "Error fetching logs: " + err;
+      });
+    }
+
+    // Cancel a deployment.
+    function cancelDeployment() {
+      const deploymentId = document.getElementById("deploymentId").value;
+      const agentIp = document.getElementById("agentIp").value;
+      if (!deploymentId || !agentIp) {
+        alert("Please provide both Deployment ID and Agent IP.");
+        return;
+      }
+      fetch("/cancel_deployment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deployment_id: deploymentId, agent_ip: agentIp })
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert("Cancellation result: " + JSON.stringify(data));
+        // Clear logs and deployment ID after cancellation.
+        document.getElementById("logs").textContent = "";
+        document.getElementById("deploymentId").value = "";
+      })
+      .catch(err => {
+        console.error("Error cancelling deployment:", err);
+        alert("Error cancelling deployment: " + err);
+      });
+    }
+  </script>
+</body>
+</html>

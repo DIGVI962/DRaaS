@@ -4,7 +4,7 @@ import uuid
 import threading
 import tempfile
 import zipfile
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, render_template
 import requests
 import docker
 
@@ -150,137 +150,7 @@ def dashboard():
     Serves a basic HTML dashboard to monitor active agents and deployments.
     Displays agent status with a colored dot and tooltip.
     """
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Scheduler Dashboard</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            th { background-color: #f4f4f4; }
-            .section { margin-bottom: 40px; }
-            .dot {
-                height: 15px;
-                width: 15px;
-                border-radius: 50%;
-                display: inline-block;
-            }
-            .free { background-color: green; }
-            .busy { background-color: red; }
-        </style>
-    </head>
-    <body>
-        <h1>Scheduler Dashboard</h1>
-        <div class="section">
-            <h2>Active Agents</h2>
-            <table id="agentsTable">
-                <thead>
-                    <tr>
-                        <th>Agent ID</th>
-                        <th>IP</th>
-                        <th>CPU</th>
-                        <th>Memory</th>
-                        <th>Last Seen</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-        <div class="section">
-            <h2>Deployment Monitor</h2>
-            <form id="deploymentForm">
-                <label for="deploymentId">Deployment ID:</label>
-                <input type="text" id="deploymentId" required>
-                <label for="agentIp">Agent IP:</label>
-                <input type="text" id="agentIp" required>
-                <button type="button" onclick="fetchLogs()">Fetch Logs</button>
-                <button type="button" onclick="cancelDeployment()">Cancel Deployment</button>
-            </form>
-            <pre id="logs" style="background-color: #eee; padding: 10px; height:300px; overflow:auto;"></pre>
-        </div>
-        <script>
-            // Fetch active agents every 5 seconds.
-            function fetchAgents() {
-                fetch('/agents')
-                .then(response => response.json())
-                .then(data => {
-                    const tbody = document.querySelector("#agentsTable tbody");
-                    tbody.innerHTML = "";
-                    for (let agentId in data) {
-                        const agent = data[agentId];
-                        let statusClass = agent.state.toLowerCase() === "free" ? "free" : "busy";
-                        let tooltip = agent.state;
-                        const row = document.createElement("tr");
-                        row.innerHTML = `
-                            <td>${agentId}</td>
-                            <td>${agent.ip}</td>
-                            <td>${agent.cpu}</td>
-                            <td>${agent.memory}</td>
-                            <td>${new Date(agent.last_seen * 1000).toLocaleString()}</td>
-                            <td><span class="dot ${statusClass}" title="${tooltip}"></span> ${agent.state}</td>
-                        `;
-                        tbody.appendChild(row);
-                    }
-                })
-                .catch(err => console.error("Error fetching agents:", err));
-            }
-            // Initial fetch and poll every 5 seconds.
-            fetchAgents();
-            setInterval(fetchAgents, 5000);
-
-            // Fetch deployment logs from the agent.
-            function fetchLogs() {
-                const deploymentId = document.getElementById("deploymentId").value;
-                const agentIp = document.getElementById("agentIp").value;
-                if (!deploymentId || !agentIp) {
-                    alert("Please provide both Deployment ID and Agent IP.");
-                    return;
-                }
-                fetch(`http://${agentIp}:5001/deployment_logs?deployment_id=${deploymentId}`)
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("logs").textContent =
-                        "Status: " + data.status + "\\n\\n" +
-                        "Mapped Ports: " + JSON.stringify(data.mapped_ports, null, 2) + "\\n\\n" +
-                        "Logs:\\n" + data.logs;
-                })
-                .catch(err => {
-                    console.error("Error fetching logs:", err);
-                    document.getElementById("logs").textContent = "Error fetching logs: " + err;
-                });
-            }
-
-            // Cancel a deployment.
-            function cancelDeployment() {
-                const deploymentId = document.getElementById("deploymentId").value;
-                const agentIp = document.getElementById("agentIp").value;
-                if (!deploymentId || !agentIp) {
-                    alert("Please provide both Deployment ID and Agent IP.");
-                    return;
-                }
-                fetch("/cancel_deployment", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ deployment_id: deploymentId, agent_ip: agentIp })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert("Cancellation result: " + JSON.stringify(data));
-                })
-                .catch(err => {
-                    console.error("Error cancelling deployment:", err);
-                    alert("Error cancelling deployment: " + err);
-                });
-            }
-        </script>
-    </body>
-    </html>
-    """
-    return Response(html, mimetype="text/html")
+    return render_template("dashboard.html")
 
 def cleanup_agents():
     """Removes stale agents based on heartbeat timeout."""
