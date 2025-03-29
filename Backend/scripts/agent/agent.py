@@ -1,9 +1,15 @@
+"""
+The code below is a Flask-based agent that interacts with a scheduler to manage Docker container deployments.
+It includes endpoints for starting deployments, checking logs, and canceling deployments. 
+The agent also sends periodic heartbeat signals to the scheduler with its status and resource usage.
+"""
+
 import os
-from dotenv import load_dotenv
 import time
 import uuid
 import threading
 import docker
+from dotenv import load_dotenv
 import requests
 import psutil
 from flask import Flask, request, jsonify
@@ -23,7 +29,13 @@ SCHEDULER_URL = os.getenv("SCHEDULER_URL", "http://localhost:5000")
 agent_state = "Free"
 
 # Dictionary to track ongoing deployments.
-# Keys: deployment_id, Values: { "container": <container_object>, "logs": <str>, "status": <running|completed|failed|cancelled>, "mapped_ports": <dict> }
+# Keys: deployment_id
+# Values: {
+#               "container": <container_object>,
+#               "logs": <str>,
+#               "status": <running|completed|failed|cancelled>,
+#               "mapped_ports": <dict>
+#          }
 deployment_tasks = {}
 
 def send_heartbeat():
@@ -46,6 +58,7 @@ def send_heartbeat():
 
 @app.route('/start_deployment', methods=['POST'])
 def start_deployment():
+    """Starts a new deployment by running a Docker container."""
     global agent_state
     # Only run deployments on a free agent.
     if agent_state == "Busy":
@@ -81,12 +94,17 @@ def start_deployment():
         deployment_tasks[deployment_id]["mapped_ports"] = ports
         # Start background thread to stream logs and monitor container status.
         threading.Thread(target=monitor_deployment, args=(deployment_id,), daemon=True).start()
-        return jsonify({"status": "started", "deployment_id": deployment_id, "mapped_ports": ports}), 200
+        return jsonify({
+            "status": "started", 
+            "deployment_id": deployment_id, 
+            "mapped_ports": ports
+        }), 200
     except Exception as e:
         agent_state = "Free"  # Reset state on error.
         return jsonify({"status": "error", "message": str(e)}), 500
 
 def monitor_deployment(deployment_id):
+    """Monitor the deployment by streaming logs and checking status."""
     global agent_state
     container = deployment_tasks[deployment_id]["container"]
     try:
@@ -125,10 +143,6 @@ def deployment_logs():
 @app.route('/cancel_deployment', methods=['POST'])
 def cancel_deployment():
     global agent_state
-    """
-    Cancels an ongoing deployment.
-    Expects JSON payload with "deployment_id".
-    """
     data = request.get_json()
     deployment_id = data.get("deployment_id")
     if not deployment_id or deployment_id not in deployment_tasks:
@@ -141,6 +155,7 @@ def cancel_deployment():
         return jsonify({"status": "cancelled", "deployment_id": deployment_id}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 if __name__ == "__main__":
     threading.Thread(target=send_heartbeat, daemon=True).start()

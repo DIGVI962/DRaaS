@@ -157,10 +157,6 @@
           <label for="deploymentId">Deployment ID:</label>
           <input type="text" id="deploymentId" required>
         </div>
-        <div class="form-group">
-          <label for="agentIp">Agent IP:</label>
-          <input type="text" id="agentIp" required>
-        </div>
         <button type="button" onclick="fetchLogs()">Fetch Logs</button>
         <button type="button" onclick="cancelDeployment()">Cancel Deployment</button>
       </form>
@@ -240,7 +236,6 @@
         if (data.status === "deployed") {
           document.getElementById("uploadStatus").innerText = "Deployment successful! Deployment ID: " + data.deployment_id;
           document.getElementById("deploymentId").value = data.deployment_id;
-          document.getElementById("agentIp").value = data.agent;
         } else {
           document.getElementById("uploadStatus").innerText = "Error: " + data.message;
         }
@@ -251,15 +246,14 @@
       });
     }
 
-    // Fetch deployment logs from agent.
+    // Fetch deployment logs from scheduler.
     function fetchLogs() {
       const deploymentId = document.getElementById("deploymentId").value;
-      const agentIp = document.getElementById("agentIp").value;
-      if (!deploymentId || !agentIp) {
-        alert("Please provide both Deployment ID and Agent IP.");
+      if (!deploymentId) {
+        alert("Please provide a Deployment ID.");
         return;
       }
-      fetch(`http://${agentIp}:5001/deployment_logs?deployment_id=${deploymentId}`)
+      fetch(`/deployment_logs?deployment_id=${deploymentId}`)
       .then(response => response.json())
       .then(data => {
         document.getElementById("logs").textContent =
@@ -273,30 +267,33 @@
       });
     }
 
-    // Cancel a deployment.
+    // Cancel a deployment via scheduler.
     function cancelDeployment() {
-      const deploymentId = document.getElementById("deploymentId").value;
-      const agentIp = document.getElementById("agentIp").value;
-      if (!deploymentId || !agentIp) {
-        alert("Please provide both Deployment ID and Agent IP.");
-        return;
-      }
-      fetch("/cancel_deployment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deployment_id: deploymentId, agent_ip: agentIp })
-      })
-      .then(response => response.json())
-      .then(data => {
-        alert("Cancellation result: " + JSON.stringify(data));
-        // Clear logs and deployment ID after cancellation.
-        document.getElementById("logs").textContent = "";
-        document.getElementById("deploymentId").value = "";
-      })
-      .catch(err => {
-        console.error("Error cancelling deployment:", err);
-        alert("Error cancelling deployment: " + err);
-      });
+        const deploymentId = document.getElementById("deploymentId").value;
+        if (!deploymentId) {
+            alert("Please provide a Deployment ID.");
+            return;
+        }
+        fetch("/cancel_deployment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deployment_id: deploymentId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "cancelled") {
+            alert("Cancellation successful: " + JSON.stringify(data));
+            // Clear logs and deployment ID only on successful cancellation.
+            document.getElementById("logs").textContent = "";
+            document.getElementById("deploymentId").value = "";
+            } else {
+            alert("Cancellation failed: " + JSON.stringify(data));
+            }
+        })
+        .catch(err => {
+            console.error("Error cancelling deployment:", err);
+            alert("Error cancelling deployment: " + err);
+        });
     }
   </script>
 </body>

@@ -136,27 +136,38 @@ def upload_code():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/deployment_logs', methods=['GET'])
+def get_deployment_logs():
+    """
+    Proxies the request to fetch deployment logs from the appropriate agent,
+    based on the deployment information stored in the scheduler.
+    """
+    deployment_id = request.args.get("deployment_id")
+    if not deployment_id:
+        return jsonify({"status": "error", "message": "Missing deployment_id"}), 400
+    if deployment_id not in deployments:
+        return jsonify({"status": "error", "message": "Unknown deployment_id"}), 404
+    agent_ip = deployments[deployment_id]["agent"]
+    try:
+        resp = requests.get(f"http://{agent_ip}:5001/deployment_logs", params={"deployment_id": deployment_id}, timeout=30)
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/cancel_deployment', methods=['POST'])
 def scheduler_cancel_deployment():
-    """
-    Forwards a cancellation request to an agent.
-    Expects JSON payload with:
-      - "deployment_id": the deployment ID,
-      - "agent_ip": the IP address of the agent.
-    """
     data = request.get_json()
     deployment_id = data.get("deployment_id")
-    agent_ip = data.get("agent_ip")
     if not deployment_id:
         return jsonify({"status": "error", "message": "No deployment id provided"}), 400
-    if not agent_ip:
-        return jsonify({"status": "error", "message": "No agent ip provided"}), 400
+    if deployment_id not in deployments:
+        return jsonify({"status": "error", "message": "Unknown deployment id"}), 404
+    agent_ip = deployments[deployment_id]["agent"]
     try:
         url = f"http://{agent_ip}:5001/cancel_deployment"
         payload = {"deployment_id": deployment_id}
         resp = requests.post(url, json=payload, timeout=30)
-         # If cancellation is successful, update deployment status.
-        if resp.status_code == 200 and deployment_id in deployments:
+        if resp.status_code == 200:
             deployments[deployment_id]["status"] = "cancelled"
         return jsonify(resp.json()), resp.status_code
     except Exception as e:
