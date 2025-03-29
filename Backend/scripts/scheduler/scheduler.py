@@ -22,6 +22,10 @@ HEARTBEAT_TIMEOUT = 10  # seconds
 
 docker_client = docker.from_env()
 
+# Global dictionary to store deployments info.
+# Each key is a deployment_id and the value is a dict with details.
+deployments = {}
+
 @app.route('/heartbeat', methods=['POST'])
 def heartbeat():
     """
@@ -85,7 +89,8 @@ def upload_code():
     try:
         username = os.getenv("DOCKER_USERNAME")
         password = os.getenv("DOCKER_PASSWORD")
-        if username and password:
+        hub_push = os.getenv("HUB_PUSH", "false").lower() == "true"
+        if hub_push and not (username and password):
             docker_client.login(username=username, password=password)
             push_output = docker_client.images.push(image_tag)
             print(f"Image pushed: {push_output}")
@@ -108,12 +113,22 @@ def upload_code():
         payload = {"image": image_tag, "container_name": f"{image_tag}_container"}
         resp = requests.post(url, json=payload, timeout=60)
         if resp.status_code == 200:
+            deployment_id = resp.json().get("deployment_id")
+            mapped_ports = resp.json().get("mapped_ports")
+            # Store deployment info in the global dictionary.
+            deployments[deployment_id] = {
+                "deployment_id": deployment_id,
+                "agent": agent_ip,
+                "image": image_tag,
+                "mapped_ports": mapped_ports,
+                "status": "running"
+            }
             return jsonify({
                 "status": "deployed",
                 "agent": agent_ip,
                 "image": image_tag,
-                "deployment_id": resp.json().get("deployment_id"),
-                "mapped_ports": resp.json().get("mapped_ports"),
+                "deployment_id": deployment_id,
+                "mapped_ports": mapped_ports,
                 "logs": ""
             }), 200
         else:
@@ -140,6 +155,9 @@ def scheduler_cancel_deployment():
         url = f"http://{agent_ip}:5001/cancel_deployment"
         payload = {"deployment_id": deployment_id}
         resp = requests.post(url, json=payload, timeout=30)
+         # If cancellation is successful, update deployment status.
+        if resp.status_code == 200 and deployment_id in deployments:
+            deployments[deployment_id]["status"] = "cancelled"
         return jsonify(resp.json()), resp.status_code
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -148,6 +166,10 @@ def scheduler_cancel_deployment():
 def get_agents():
     """Returns the list of active agents in JSON format."""
     return jsonify(agents)
+
+@app.route('/deployments', methods=['GET'])
+def get_deployments():
+    return jsonify(deployments)
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():

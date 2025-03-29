@@ -125,6 +125,22 @@
       </table>
     </div>
     <div class="section">
+      <h2>Current Deployments</h2>
+      <table id="deploymentsTable">
+        <thead>
+          <tr>
+            <th>Deployment ID</th>
+            <th>Agent</th>
+            <th>Image</th>
+            <th>Mapped Ports</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
       <h2>Upload Code & Deploy</h2>
       <form id="uploadForm">
         <div class="form-group">
@@ -177,8 +193,32 @@
         })
         .catch(err => console.error("Error fetching agents:", err));
     }
+    // Poll deployments every 5 seconds.
+    function fetchDeployments() {
+      fetch('/deployments')
+        .then(response => response.json())
+        .then(data => {
+          const tbody = document.querySelector("#deploymentsTable tbody");
+          tbody.innerHTML = "";
+          for (let depId in data) {
+            const dep = data[depId];
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${dep.deployment_id}</td>
+              <td>${dep.agent}</td>
+              <td>${dep.image}</td>
+              <td>${JSON.stringify(dep.mapped_ports)}</td>
+              <td>${dep.status}</td>
+            `;
+            tbody.appendChild(row);
+          }
+        })
+        .catch(err => console.error("Error fetching deployments:", err));
+    }
     fetchAgents();
+    fetchDeployments();
     setInterval(fetchAgents, 5000);
+    setInterval(fetchDeployments, 5000);
 
     // Upload ZIP file and deploy code.
     function uploadCode() {
