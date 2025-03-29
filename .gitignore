@@ -1,1 +1,3 @@
 /Backend/demoProjects/
+/Backend/scripts/agent/*.env
+/Backend/scripts/scheduler/*.env

@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import time
 import uuid
 import threading
@@ -7,6 +8,8 @@ import requests
 import psutil
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
+load_dotenv(dotenv_path="agent.env")
 
 app = Flask(__name__)
 CORS(app)

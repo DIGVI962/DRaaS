@@ -1,14 +1,19 @@
 import os
+from dotenv import load_dotenv
 import time
 import uuid
 import threading
 import tempfile
 import zipfile
 from flask import Flask, request, jsonify, Response, render_template
+from flask_cors import CORS
 import requests
 import docker
 
+load_dotenv(dotenv_path="scheduler.env")
+
 app = Flask(__name__)
+CORS(app)
 
 # In-memory registry of active agents.
 # Each agent record now includes a "state" field (Free or Busy)
