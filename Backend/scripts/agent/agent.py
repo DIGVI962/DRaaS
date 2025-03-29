@@ -21,7 +21,8 @@ app = Flask(__name__)
 CORS(app)
 docker_client = docker.from_env()
 
-AGENT_IP = os.getenv("AGENT_IP", "localhost")
+AGENT_IP = os.getenv("AGENT_IP", "localhost:5001")
+AGENT_PORT = os.getenv("AGENT_PORT", 5001)
 AGENT_ID = str(uuid.uuid4())
 SCHEDULER_URL = os.getenv("SCHEDULER_URL", "http://localhost:5000")
 
@@ -159,4 +160,4 @@ def cancel_deployment():
 
 if __name__ == "__main__":
     threading.Thread(target=send_heartbeat, daemon=True).start()
-    app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=AGENT_PORT)

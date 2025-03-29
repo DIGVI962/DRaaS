@@ -116,7 +116,7 @@ def upload_code():
     agent_ip = selected_agent["ip"]
 
     try:
-        url = f"http://{agent_ip}:5001/start_deployment"
+        url = f"http://{agent_ip}/start_deployment"
         payload = {"image": image_tag, "container_name": f"{image_tag}_container"}
         resp = requests.post(url, json=payload, timeout=60)
         if resp.status_code == 200:
@@ -156,7 +156,7 @@ def get_deployment_logs():
         return jsonify({"status": "error", "message": "Unknown deployment_id"}), 404
     agent_ip = deployments[deployment_id]["agent"]
     try:
-        resp = requests.get(f"http://{agent_ip}:5001/deployment_logs", params={"deployment_id": deployment_id}, timeout=30)
+        resp = requests.get(f"http://{agent_ip}/deployment_logs", params={"deployment_id": deployment_id}, timeout=30)
         return jsonify(resp.json()), resp.status_code
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -172,7 +172,7 @@ def scheduler_cancel_deployment():
         return jsonify({"status": "error", "message": "Unknown deployment id"}), 404
     agent_ip = deployments[deployment_id]["agent"]
     try:
-        url = f"http://{agent_ip}:5001/cancel_deployment"
+        url = f"http://{agent_ip}/cancel_deployment"
         payload = {"deployment_id": deployment_id}
         resp = requests.post(url, json=payload, timeout=30)
         if resp.status_code == 200:
