@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 };
 
 const Layout = ({ children }: Readonly<{ children: ReactNode }>) => {
-    const initialState = cookieToInitialState(config, headers().get('cookie'));
+    // const initialState = cookieToInitialState(config, headers().get('cookie'));
 
     return (
         <html suppressHydrationWarning lang='en'>
