@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import NavigationLinks from '@/app/(delete-this-and-modify-page.tsx)/NavigationLinks';
 import ThemeSwitch from '@/app/(delete-this-and-modify-page.tsx)/ThemeSwitch';
+import ConnectButton from '@/lib/wallet-modal';
 
 const NavigationBar = () => {
     return (
@@ -9,6 +10,7 @@ const NavigationBar = () => {
             <NavigationLinks />
             <div className='flex w-full justify-between gap-6 sm:w-auto sm:items-center'>
                 <ThemeSwitch />
+                <ConnectButton />
             </div>
         </nav>
     );

@@ -38,11 +38,11 @@ const Layout = ({ children }: Readonly<{ children: ReactNode }>) => {
             <body
                 className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground overscroll-none antialiased`}>
                 <ThemeProvider attribute='class'>
-                    {/* <WagmiProviderComp initialState={initialState}> */}
-                    <NavigationBar />
-                    {children}
-                    <Toaster />
-                    {/* </WagmiProviderComp> */}
+                    <WagmiProviderComp>
+                        <NavigationBar />
+                        {children}
+                        <Toaster />
+                    </WagmiProviderComp>
                 </ThemeProvider>
             </body>
         </html>
