@@ -36,6 +36,12 @@ import {
     XCircle
 } from 'lucide-react';
 
+declare global {
+    interface Window {
+        ethereum?: any;
+    }
+}
+
 const CONTRACT_ADDRESS = '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'; // your deployed address
 
 const API_BASE_URL = 'https://56c6-2409-4085-28c-d21a-183c-2457-d23-9029.ngrok-free.app';
