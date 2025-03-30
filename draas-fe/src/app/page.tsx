@@ -16,18 +16,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/regi
 import { Contract, ethers } from 'ethers';
 import {
     AlertCircle,
+    Braces,
     Clock,
     Code,
     Cpu,
     FileCode2,
+    FileIcon,
     Globe,
     HardDrive,
     Info,
-    Javascript,
     Languages,
     Layers,
     MonitorCheck,
-    Python,
     RotateCw,
     ServerCrash,
     Terminal,
@@ -83,14 +83,14 @@ export default function SchedulerDashboard() {
             id: 'python',
             title: 'Python Script',
             description: 'Deploy a Python application or script',
-            icon: <Python className='size-8 text-blue-600' />,
+            icon: <FileIcon className='size-8 text-blue-600' />,
             requirements: ['main.py file', 'requirements.txt', 'Dockerfile']
         },
         {
             id: 'nodejs',
             title: 'JavaScript/Node.js',
             description: 'Deploy a Node.js application',
-            icon: <Javascript className='size-8 text-yellow-500' />,
+            icon: <Braces className='size-8 text-yellow-500' />,
             requirements: ['index.js file', 'package.json', 'Dockerfile']
         },
         {
