@@ -11,7 +11,7 @@ DRaaS/
 ├── Backend/
 │   └── scripts/
 │       ├── agent/
-│           ├── requirements.txt
+│       |   ├── requirements.txt
 │       │   ├── agent.py
 │       │   ├── agent.env.example
 │       └── scheduler/
