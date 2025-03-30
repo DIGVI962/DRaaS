@@ -52,6 +52,7 @@ interface Agent {
     memory: number;
     last_seen: number;
     state: string;
+    Reuptation?: number;
 }
 
 interface DeploymentInfo {
@@ -313,7 +314,6 @@ export default function SchedulerDashboard() {
             <div className='mx-auto max-w-7xl'>
                 <header className='mb-6 flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-800'>
                     <h1 className='flex items-center gap-2 text-3xl font-bold text-rose-700 dark:text-rose-300'>
-                        <MonitorCheck className='size-7' />
                         <span>Scheduler Dashboard</span>
                     </h1>
                     <div className='flex items-center gap-2'>
@@ -579,6 +579,15 @@ export default function SchedulerDashboard() {
                                                 </div>
                                                 <span className='text-gray-700 dark:text-gray-300'>
                                                     {getTimeSince(agent.last_seen)}
+                                                </span>
+                                            </div>
+                                            <div className='flex items-center justify-between border-t border-gray-100 pt-1 text-gray-600 dark:border-gray-800 dark:text-gray-400'>
+                                                <div className='flex items-center'>
+                                                    <Clock className='mr-2 size-4' />
+                                                    <span>Reputation Score</span>
+                                                </div>
+                                                <span className='text-gray-700 dark:text-gray-300'>
+                                                    {agent.Reuptation}%
                                                 </span>
                                             </div>
                                         </CardContent>
