@@ -222,9 +222,16 @@ export default function SchedulerDashboard() {
 
     const uploadCode = async () => {
         if (!uploadFile) return alert('Select a zip file.');
-        if (typeof window === 'undefined' || !window.ethereum) {
-    return alert('Please connect your wallet.');
-  }
+
+        if (typeof window === 'undefined') {
+            setUploadStatus('MetaMask not found. Please install or unlock it.');
+            return;
+        }
+
+        if (!window.ethereum) {
+            setUploadStatus('MetaMask not found. Please install or unlock it.');
+            return;
+        }
 
         setUploadStatus('Preparing deployment...');
         setIsLoading(true);
