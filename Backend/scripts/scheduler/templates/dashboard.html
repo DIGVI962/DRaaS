@@ -179,8 +179,8 @@
             row.innerHTML = `
               <td>${agentId}</td>
               <td>${agent.ip}</td>
-              <td>${agent.cpu}</td>
-              <td>${agent.memory}</td>
+              <td>${agent.cpu} %</td>
+              <td>${agent.memory} MB</td>
               <td>${new Date(agent.last_seen * 1000).toLocaleString()}</td>
               <td><span class="dot ${statusClass}" title="${tooltip}"></span> ${agent.state}</td>
             `;
@@ -213,8 +213,8 @@
     }
     fetchAgents();
     fetchDeployments();
-    setInterval(fetchAgents, 5000);
-    setInterval(fetchDeployments, 5000);
+    setInterval(fetchAgents, 2000);
+    setInterval(fetchDeployments, 2000);
 
     // Upload ZIP file and deploy code.
     function uploadCode() {

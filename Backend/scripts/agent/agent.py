@@ -55,7 +55,7 @@ def send_heartbeat():
             requests.post(f"{SCHEDULER_URL}/heartbeat", json=payload, timeout=5)
         except Exception as e:
             print(f"Heartbeat failed: {e}")
-        time.sleep(5)
+        time.sleep(2)
 
 @app.route('/start_deployment', methods=['POST'])
 def start_deployment():
