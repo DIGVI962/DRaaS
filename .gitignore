@@ -1,3 +1,9 @@
 /Backend/demoProjects/
 /Backend/scripts/agent/*.env
 /Backend/scripts/scheduler/*.env
+
+draas-fe/.devcontainer
+draas-fe/.github
+draas-fe/.vscode
+draas-fe/.next
+draas-fe/node_modules
