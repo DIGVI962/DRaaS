@@ -43,6 +43,7 @@ def heartbeat():
         "cpu": data.get("cpu"),
         "memory": data.get("memory"),
         "state": data.get("state", "Free"),
+        "Reuptation": data.get("Reuptation", 50),
         "last_seen": time.time()
     }
     return jsonify({"status": "ok"}), 200

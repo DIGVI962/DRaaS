@@ -118,6 +118,7 @@
             <th>Memory</th>
             <th>Last Seen</th>
             <th>Status</th>
+            <th>Reuptation</th>
           </tr>
         </thead>
         <tbody>
@@ -183,6 +184,7 @@
               <td>${agent.memory} MB</td>
               <td>${new Date(agent.last_seen * 1000).toLocaleString()}</td>
               <td><span class="dot ${statusClass}" title="${tooltip}"></span> ${agent.state}</td>
+              <td>${agent.Reuptation}</td>
             `;
             tbody.appendChild(row);
           }

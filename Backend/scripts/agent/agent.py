@@ -50,7 +50,8 @@ def send_heartbeat():
                 "ip": AGENT_IP,
                 "cpu": cpu_usage,
                 "memory": memory_usage,
-                "state": agent_state
+                "state": agent_state,
+                "Reuptation": 95
             }
             requests.post(f"{SCHEDULER_URL}/heartbeat", json=payload, timeout=5)
         except Exception as e:
