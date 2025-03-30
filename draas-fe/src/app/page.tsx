@@ -223,12 +223,17 @@ export default function SchedulerDashboard() {
     const uploadCode = async () => {
         if (!uploadFile) return alert('Select a zip file.');
 
-        if (typeof window === 'undefined') {
-            setUploadStatus('MetaMask not found. Please install or unlock it.');
-            return;
-        }
+        // if (typeof window === 'undefined') {
+        //     setUploadStatus('MetaMask not found. Please install or unlock it.');
+        //     return;
+        // }
 
-        if (!window.ethereum) {
+        // if (!window.ethereum) {
+        //     setUploadStatus('MetaMask not found. Please install or unlock it.');
+        //     return;
+        // }
+
+        if (typeof window === 'undefined' || typeof window.ethereum === 'undefined') {
             setUploadStatus('MetaMask not found. Please install or unlock it.');
             return;
         }
