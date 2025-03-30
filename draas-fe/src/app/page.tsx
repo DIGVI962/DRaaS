@@ -222,7 +222,9 @@ export default function SchedulerDashboard() {
 
     const uploadCode = async () => {
         if (!uploadFile) return alert('Select a zip file.');
-        if (!window.ethereum) return alert('Please connect your wallet.');
+        if (typeof window === 'undefined' || !window.ethereum) {
+    return alert('Please connect your wallet.');
+  }
 
         setUploadStatus('Preparing deployment...');
         setIsLoading(true);
