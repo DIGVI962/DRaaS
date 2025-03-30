@@ -1,4 +1,4 @@
-"""Contains the main scheduler for managing deployments and agents."""
+"""Contains the code for main scheduler for managing deployments and agents."""
 
 import os
 import time
